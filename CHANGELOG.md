@@ -1,5 +1,10 @@
 # Changelog
 
+## V1.5
+
+- Move the header text down by a total of 11px from its original position, targeting approximately 30px between the card top and the title in the supplied screenshot.
+- Keep the entity rows, header font size and horizontal alignment unchanged.
+
 ## V1.4
 
 - Move the header text down by 1px to make the spacing above it closer to 20px, without altering the card height, font, or entity rows.
