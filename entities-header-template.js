@@ -1,4 +1,4 @@
-const ENTITIES_HEADER_TEMPLATE_VERSION = "1.2";
+const ENTITIES_HEADER_TEMPLATE_VERSION = "1.3";
 
 class EntitiesHeaderTemplate extends HTMLElement {
   static async getConfigElement() {
@@ -465,6 +465,7 @@ class EntitiesHeaderTemplateEditor extends HTMLElement {
     this._centerToggle = null;
     this._fallbackField = null;
     this._fallbackSelector = null;
+    this._fallbackDraft = null;
     this._configPanel = null;
     this._configHeader = null;
     this._interactionsPanel = null;
@@ -807,14 +808,12 @@ class EntitiesHeaderTemplateEditor extends HTMLElement {
     this._fallbackSelector.selector = { text: {} };
     this._fallbackSelector.addEventListener("value-changed", e => {
       if (this._syncing) return;
-      const next = e.detail.value == null ? "" : String(e.detail.value);
-      if ((this._config.fallback_title || "") === next) return;
-      if (next) {
-        this._config.fallback_title = next;
-      } else {
-        delete this._config.fallback_title;
-      }
-      this._fire();
+      // Updating Home Assistant's card preview on every keystroke causes
+      // the native fallback title to flash before card_mod styles load.
+      this._fallbackDraft = e.detail.value == null ? "" : String(e.detail.value);
+    });
+    this._fallbackSelector.addEventListener("focusout", () => {
+      this._commitFallbackTitle();
     });
     if (this._fallbackField) {
       this._fallbackField.appendChild(this._fallbackSelector);
@@ -1079,6 +1078,18 @@ class EntitiesHeaderTemplateEditor extends HTMLElement {
       this._entitiesEditor.hass = this._hass;
     }
   }
+  _commitFallbackTitle() {
+    if (this._fallbackDraft === null) return;
+    const next = this._fallbackDraft;
+    this._fallbackDraft = null;
+    if ((this._config.fallback_title || "") === next) return;
+    if (next) {
+      this._config.fallback_title = next;
+    } else {
+      delete this._config.fallback_title;
+    }
+    this._fire();
+  }
   _sync() {
     if (!this._built) return;
     this._syncing = true;
@@ -1087,7 +1098,7 @@ class EntitiesHeaderTemplateEditor extends HTMLElement {
     if (this._fallbackSelector) {
       this._fallbackSelector.hass = this._hass;
       const fb = this._config.fallback_title || "";
-      if (this._fallbackSelector.value !== fb) {
+      if (this._fallbackDraft === null && this._fallbackSelector.value !== fb) {
         this._fallbackSelector.value = fb;
       }
     }
