@@ -29,7 +29,6 @@ class EntitiesHeaderTemplate extends HTMLElement {
     this._card = null;
     this._renderedTitle = "";
     this._lastEntitiesConfigJson = "";
-    this._lastHeaderStyle = "";
     this._unsubTemplate = null;
     this._subscribedTemplate = "";
     this._subscribing = false;
@@ -136,6 +135,8 @@ class EntitiesHeaderTemplate extends HTMLElement {
   }
   _updateEntitiesCardConfig() {
     if (!this._config || !this._card) return;
+    // Style the native fallback header before Home Assistant renders it.
+    this._applyHeaderStyle();
     const entitiesConfig = {
       ...this._config,
       type: "entities",
@@ -156,9 +157,11 @@ class EntitiesHeaderTemplate extends HTMLElement {
         this._card.hass = this._hass;
       }
     }
+    // Home Assistant may replace shadow-root content during setConfig.
+    this._applyHeaderStyle();
     requestAnimationFrame(() => {
-      this._setHeaderText(this._renderedTitle || this._config.fallback_title || "");
       this._applyHeaderStyle();
+      this._setHeaderText(this._renderedTitle || this._config.fallback_title || "");
       this._bindHeaderActions();
     });
   }
@@ -182,6 +185,7 @@ class EntitiesHeaderTemplate extends HTMLElement {
         }
         return;
       }
+      this._applyHeaderStyle();
       if (header.textContent !== (text || "")) {
         header.textContent = text || "";
       }
@@ -370,10 +374,10 @@ class EntitiesHeaderTemplate extends HTMLElement {
     }
   }
   _applyHeaderStyle() {
-    requestAnimationFrame(() => {
-      if (!this._card?.shadowRoot) return;
-      const cursor = this._headerActionsEnabled() ? "pointer" : "default";
-      const styleText = this._config.center_header_template
+    const root = this._card?.shadowRoot;
+    if (!root || !this._config) return;
+    const cursor = this._headerActionsEnabled() ? "pointer" : "default";
+    const styleText = this._config.center_header_template
         ? `
           .card-header {
             display: flex !important;
@@ -433,15 +437,15 @@ class EntitiesHeaderTemplate extends HTMLElement {
             pointer-events: none !important;
           }
         `;
-      if (styleText === this._lastHeaderStyle) return;
-      this._lastHeaderStyle = styleText;
-      const oldStyle = this._card.shadowRoot.querySelector("#entities-header-template-style");
-      if (oldStyle) oldStyle.remove();
-      const style = document.createElement("style");
+    let style = root.querySelector("#entities-header-template-style");
+    if (!style) {
+      style = document.createElement("style");
       style.id = "entities-header-template-style";
+      root.appendChild(style);
+    }
+    if (style.textContent !== styleText) {
       style.textContent = styleText;
-      this._card.shadowRoot.appendChild(style);
-    });
+    }
   }
 }
 class EntitiesHeaderTemplateEditor extends HTMLElement {
