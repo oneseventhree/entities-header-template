@@ -1,3 +1,5 @@
+const ENTITIES_HEADER_TEMPLATE_VERSION = "1.0";
+
 class EntitiesHeaderTemplate extends HTMLElement {
   static async getConfigElement() {
     return document.createElement("entities-header-template-editor");
@@ -1132,3 +1134,5 @@ window.customCards.push({
   name: "Entities Header Template",
   description: "Entities card with a templated header"
 });
+
+console.info(`Entities Header Template V${ENTITIES_HEADER_TEMPLATE_VERSION} loaded`);
