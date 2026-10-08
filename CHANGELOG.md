@@ -1,5 +1,10 @@
 # Changelog
 
+## V1.1
+
+- Keep fallback and live template titles in the same styled header text element, so they inherit the same font size, weight and alignment.
+- Avoid replacing the outer header if Home Assistant has not rendered its text element yet.
+
 ## V1.0
 
 Initial stable release of Entities Header Template.
@@ -11,4 +16,3 @@ Initial stable release of Entities Header Template.
 - Collapsible visual editor for templates and interactions.
 - Compatibility with native and custom entity rows.
 
-Future stable versions will use V1.1, V1.2 and so on.
