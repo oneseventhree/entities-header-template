@@ -1,4 +1,4 @@
-const ENTITIES_HEADER_TEMPLATE_VERSION = "1.5";
+const ENTITIES_HEADER_TEMPLATE_VERSION = "1.6";
 
 class EntitiesHeaderTemplate extends HTMLElement {
   static async getConfigElement() {
@@ -414,7 +414,7 @@ class EntitiesHeaderTemplate extends HTMLElement {
             white-space: nowrap !important;
             text-overflow: ellipsis !important;
             pointer-events: none !important;
-            transform: translateY(11px) !important;
+            transform: translateY(1px) !important;
           }
           .card-header ha-switch,
           .card-header ha-icon-button {
@@ -443,7 +443,7 @@ class EntitiesHeaderTemplate extends HTMLElement {
             white-space: nowrap !important;
             text-overflow: ellipsis !important;
             pointer-events: none !important;
-            transform: translateY(11px) !important;
+            transform: translateY(1px) !important;
           }
         `;
     let style = root.querySelector("#entities-header-template-style");
