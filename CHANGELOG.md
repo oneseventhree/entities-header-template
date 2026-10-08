@@ -1,5 +1,10 @@
 # Changelog
 
+## V1.4
+
+- Move the header text down by 1px to make the spacing above it closer to 20px, without altering the card height, font, or entity rows.
+- Apply the same adjustment to live template and fallback text for centred and non-centred headers.
+
 ## V1.3
 
 - Prevent the visual editor from rebuilding the card on each fallback-title keystroke.
