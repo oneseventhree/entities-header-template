@@ -1,4 +1,5 @@
-const ENTITIES_HEADER_TEMPLATE_VERSION = "1.7";
+const ENTITIES_HEADER_TEMPLATE_VERSION = "1.8";
+const ENTITIES_HEADER_TEMPLATE_FIRST_ROW_GAP = 36;
 
 class EntitiesHeaderTemplate extends HTMLElement {
   static async getConfigElement() {
@@ -39,6 +40,15 @@ class EntitiesHeaderTemplate extends HTMLElement {
     this._held = false;
     this._boundHeader = null;
     this._headerActionAbort = null;
+    this._spacingFrame = null;
+    this._spacingStates = null;
+    this._spacingOriginalMargin = "";
+    this._spacingBaseMargin = 0;
+    this._spacingOffset = 0;
+    this._spacingName = null;
+    this._spacingHeader = null;
+    this._spacingMutations = null;
+    this._spacingResize = null;
   }
   disconnectedCallback() {
     this._unsubscribeTemplate();
@@ -49,6 +59,7 @@ class EntitiesHeaderTemplate extends HTMLElement {
       this._headerActionAbort = null;
     }
     this._boundHeader = null;
+    this._clearFirstRowSpacing();
   }
   setConfig(config) {
     if (!config) throw new Error("Invalid configuration");
@@ -77,6 +88,7 @@ class EntitiesHeaderTemplate extends HTMLElement {
       this._card.hass = hass;
     }
     this._subscribeTemplate();
+    this._scheduleFirstRowSpacing();
   }
   getCardSize() {
     return this._card?.getCardSize ? this._card.getCardSize() : 3;
@@ -172,6 +184,7 @@ class EntitiesHeaderTemplate extends HTMLElement {
       this._applyHeaderStyle();
       this._setHeaderText(this._renderedTitle || this._config.fallback_title || "");
       this._bindHeaderActions();
+      this._scheduleFirstRowSpacing();
     });
   }
   _getHeaderTextElement() {
@@ -198,6 +211,7 @@ class EntitiesHeaderTemplate extends HTMLElement {
       }
       this._applyHeaderStyle();
       this._bindHeaderActions();
+      this._scheduleFirstRowSpacing();
     });
   }
   _bindHeaderActions() {
@@ -379,6 +393,97 @@ class EntitiesHeaderTemplate extends HTMLElement {
         composed: true
       }));
     }
+  }
+  _scheduleFirstRowSpacing() {
+    if (this._spacingFrame !== null) return;
+    this._spacingFrame = requestAnimationFrame(() => {
+      this._spacingFrame = null;
+      this._updateFirstRowSpacing();
+    });
+  }
+  _clearFirstRowSpacing() {
+    if (this._spacingFrame !== null) {
+      cancelAnimationFrame(this._spacingFrame);
+      this._spacingFrame = null;
+    }
+    this._spacingMutations?.disconnect();
+    this._spacingResize?.disconnect();
+    if (this._spacingStates) {
+      this._spacingStates.style.marginTop = this._spacingOriginalMargin;
+    }
+    this._spacingStates = null;
+    this._spacingMutations = null;
+    this._spacingResize = null;
+    this._spacingName = null;
+    this._spacingHeader = null;
+    this._spacingOriginalMargin = "";
+    this._spacingBaseMargin = 0;
+    this._spacingOffset = 0;
+  }
+  _findFirstRowName(element) {
+    const queue = [element];
+    for (let visited = 0; queue.length && visited < 160; visited++) {
+      const node = queue.shift();
+      if (node.localName === "hui-generic-entity-row") {
+        const name = node.shadowRoot?.querySelector(".info");
+        if (name && name.getClientRects().length) return name;
+      }
+      if (node.shadowRoot) queue.push(...node.shadowRoot.children);
+      queue.push(...node.children);
+    }
+    return null;
+  }
+  _updateFirstRowSpacing() {
+    const states = this._card?.shadowRoot?.querySelector("#states");
+    if (!states) return;
+    if (this._spacingStates !== states) {
+      this._clearFirstRowSpacing();
+      this._spacingStates = states;
+      this._spacingOriginalMargin = states.style.marginTop;
+      this._spacingBaseMargin = parseFloat(getComputedStyle(states).marginTop) || 0;
+      if (typeof MutationObserver !== "undefined") {
+        this._spacingMutations = new MutationObserver(() => this._scheduleFirstRowSpacing());
+        this._spacingMutations.observe(states, {
+          childList: true,
+          subtree: true,
+          attributes: true,
+          attributeFilter: ["hidden"]
+        });
+      }
+      if (typeof ResizeObserver !== "undefined") {
+        this._spacingResize = new ResizeObserver(() => this._scheduleFirstRowSpacing());
+      }
+    }
+    const header = this._getHeaderTextElement();
+    let name = null;
+    for (const row of states.children) {
+      if (row.hidden || row.style.display === "none" || !row.getClientRects().length) continue;
+      name = this._findFirstRowName(row);
+      if (name) break;
+    }
+    if (this._spacingResize && (name !== this._spacingName || header !== this._spacingHeader)) {
+      this._spacingResize.disconnect();
+      if (name) this._spacingResize.observe(name);
+      if (header) this._spacingResize.observe(header);
+    }
+    this._spacingName = name;
+    this._spacingHeader = header;
+    if (!header || !name) {
+      if (this._spacingOffset !== 0) {
+        this._spacingOffset = 0;
+        states.style.marginTop = this._spacingOriginalMargin;
+      }
+      return;
+    }
+    const gap = name.getBoundingClientRect().top - header.getBoundingClientRect().bottom;
+    if (!Number.isFinite(gap)) return;
+    const correction = ENTITIES_HEADER_TEMPLATE_FIRST_ROW_GAP - gap;
+    if (Math.abs(correction) < 0.75) return;
+    // Limit the adjustment if an unusual custom row reports an unexpected rect.
+    const next = Math.max(-48, Math.min(64, this._spacingOffset + correction));
+    if (Math.abs(next - this._spacingOffset) < 0.75) return;
+    this._spacingOffset = next;
+    states.style.marginTop = `${this._spacingBaseMargin + next}px`;
   }
   _applyHeaderStyle() {
     const root = this._card?.shadowRoot;
