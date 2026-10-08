@@ -86,8 +86,17 @@ test("fallback editing listens for blur instead of emitting config per keystroke
   assert.ok(!handler.includes("this._fire()"));
 });
 
-test("header text receives one-pixel optical adjustment in both alignment modes", () => {
-  const matches = source.match(/transform: translateY\(1px\) !important;/g) || [];
-  assert.equal(matches.length, 2);
-  assert.ok(source.includes('const ENTITIES_HEADER_TEMPLATE_VERSION = "1.6";'));
+test("template header preserves native vertical position and padding", () => {
+  const start = source.indexOf("  _applyHeaderStyle() {");
+  const stop = source.indexOf("\n}\nclass EntitiesHeaderTemplateEditor", start);
+  const style = source.slice(start, stop);
+  assert.ok(start > 0 && stop > start);
+  assert.ok(!style.includes("translateY("));
+  assert.ok(!style.includes("padding-top:"));
+  assert.ok(!style.includes("padding-bottom:"));
+  assert.ok(!style.includes("padding-left: 48px"));
+  assert.ok(!style.includes("padding-right: 48px"));
+  assert.ok(!style.includes("align-items: center !important"));
+  assert.ok(style.includes("text-align: center !important"));
+  assert.ok(source.includes('const ENTITIES_HEADER_TEMPLATE_VERSION = "1.7";'));
 });
