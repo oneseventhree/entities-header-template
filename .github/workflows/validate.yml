@@ -14,6 +14,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Check JavaScript syntax
         run: node --check entities-header-template.js
+      - name: Test fallback header editing
+        run: node --test tests/*.test.cjs
   hacs:
     runs-on: ubuntu-latest
     steps:
