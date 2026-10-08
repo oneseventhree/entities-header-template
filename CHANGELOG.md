@@ -1,5 +1,13 @@
 # Changelog
 
+## V1.8
+
+- Keep a consistent 36px gap between the bottom of the header text and the top of the first visible entity name, whether its row has secondary text or not.
+- Measure the first row in the rendered card, supporting Home Assistant native rows, multiple-entity-row and visible template-entity-row names.
+- Adjust the entity rows as a group, retaining their relative spacing, internal alignment and existing header style.
+- Recalculate after relevant entity changes and resize, and disconnect observers when the card is removed.
+- Leave unsupported first-row types at their normal native spacing rather than shifting unrelated rows.
+
 ## V1.7
 
 - Restore the native Home Assistant Entities card header's vertical positioning and padding.
