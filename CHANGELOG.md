@@ -1,5 +1,11 @@
 # Changelog
 
+## V1.3
+
+- Prevent the visual editor from rebuilding the card on each fallback-title keystroke.
+- Apply fallback title changes when the text field loses focus, keeping the live header style stable while typing.
+- Preserve unsaved fallback text during editor synchronisation and add regression tests.
+
 ## V1.2
 
 - Keep the last rendered header visible while editing the fallback title or entity rows, preventing a temporary switch to the native header.
