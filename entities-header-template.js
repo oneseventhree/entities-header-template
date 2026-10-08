@@ -1,4 +1,4 @@
-const ENTITIES_HEADER_TEMPLATE_VERSION = "1.1";
+const ENTITIES_HEADER_TEMPLATE_VERSION = "1.2";
 
 class EntitiesHeaderTemplate extends HTMLElement {
   static async getConfigElement() {
@@ -54,13 +54,16 @@ class EntitiesHeaderTemplate extends HTMLElement {
     if (!config) throw new Error("Invalid configuration");
     if (!config.title_template) throw new Error("title_template is required");
     if (!config.entities) throw new Error("entities is required");
+    const templateChanged = this._config?.title_template !== config.title_template;
     this._config = {
       ...config,
       tap_action: config.tap_action || { action: "none" },
       hold_action: config.hold_action || { action: "none" },
       double_tap_action: config.double_tap_action || { action: "none" }
     };
-    this._renderedTitle = "";
+    // Keep the live title while editing fallback or entity rows.
+    // Only a changed template needs a new render result.
+    if (templateChanged) this._renderedTitle = "";
     if (!this._card) {
       this._card = document.createElement("hui-entities-card");
       this.appendChild(this._card);
@@ -92,7 +95,8 @@ class EntitiesHeaderTemplate extends HTMLElement {
       this._subscribedTemplate = template;
       this._unsubTemplate = await this._hass.connection.subscribeMessage(
         message => {
-          if (!message) return;
+          // Ignore results from a previous template while the editor is changing.
+          if (!message || this._config?.title_template !== template) return;
           if (message.result !== undefined && message.result !== null) {
             const result = String(message.result || "").trim();
             const newTitle = result || (this._config.fallback_title || "");
@@ -127,6 +131,8 @@ class EntitiesHeaderTemplate extends HTMLElement {
       console.error("Entities Header Template subscription error:", error);
     }
     this._subscribing = false;
+    // A newer template may have been entered while the prior subscription was pending.
+    if (this._config?.title_template !== template) this._subscribeTemplate();
   }
   _unsubscribeTemplate() {
     if (this._unsubTemplate) {
@@ -142,7 +148,8 @@ class EntitiesHeaderTemplate extends HTMLElement {
     const entitiesConfig = {
       ...this._config,
       type: "entities",
-      title: this._config.fallback_title || " "
+      // Avoid replacing a currently rendered title with the fallback on edits.
+      title: this._renderedTitle || this._config.fallback_title || " "
     };
     delete entitiesConfig.title_template;
     delete entitiesConfig.center_header_template;
