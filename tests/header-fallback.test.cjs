@@ -168,3 +168,39 @@ test("no first row name means no forced spacing", () => {
   assert.equal(fixture.states.style.marginTop, "");
   fixture.card._clearFirstRowSpacing();
 });
+
+test("template-entity-row uses its visible name, not hidden staging", () => {
+  const card = new Header();
+  const visible = { getClientRects: () => [{}] };
+  const staging = { getClientRects: () => [] };
+  const customRow = {
+    localName: "template-entity-row",
+    shadowRoot: {
+      querySelector: (selector) => selector === ".info" ? visible : null,
+      children: [
+        {
+          localName: "hui-generic-entity-row",
+          shadowRoot: { querySelector: () => staging, children: [] },
+          children: []
+        }
+      ]
+    },
+    children: []
+  };
+  assert.equal(card._findFirstRowName(customRow), visible);
+});
+
+test("unsupported first visible row does not shift later rows", () => {
+  const fixture = makeFirstRowFixture(18);
+  const unsupported = {
+    localName: "custom-unsupported-row",
+    hidden: false,
+    style: { display: "" },
+    getClientRects: () => [{}],
+    children: []
+  };
+  fixture.states.children.unshift(unsupported);
+  fixture.card._updateFirstRowSpacing();
+  assert.equal(fixture.states.style.marginTop, "");
+  fixture.card._clearFirstRowSpacing();
+});
