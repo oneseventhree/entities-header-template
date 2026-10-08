@@ -459,7 +459,7 @@ class EntitiesHeaderTemplate extends HTMLElement {
     for (const row of states.children) {
       if (row.hidden || row.style.display === "none" || !row.getClientRects().length) continue;
       name = this._findFirstRowName(row);
-      if (name) break;
+      break;
     }
     if (this._spacingResize && (name !== this._spacingName || header !== this._spacingHeader)) {
       this._spacingResize.disconnect();
