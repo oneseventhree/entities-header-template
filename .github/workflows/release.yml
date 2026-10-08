@@ -1,0 +1,48 @@
+name: Publish stable release
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - VERSION
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Validate version and JavaScript
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="$(tr -d '\r\n' < VERSION)"
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid stable version: $VERSION"
+            exit 1
+          fi
+          grep -Fq "const ENTITIES_HEADER_TEMPLATE_VERSION = \"${VERSION}\";" entities-header-template.js
+          node --check entities-header-template.js
+          echo "RELEASE_VERSION=$VERSION" >> "$GITHUB_ENV"
+      - name: Create GitHub release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="v${RELEASE_VERSION}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists, leaving it unchanged."
+            exit 0
+          fi
+          gh release create "$TAG" \
+            --target "$GITHUB_SHA" \
+            --title "V${RELEASE_VERSION}" \
+            --notes-file CHANGELOG.md \
+            --latest
