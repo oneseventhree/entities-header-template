@@ -1,4 +1,4 @@
-const ENTITIES_HEADER_TEMPLATE_VERSION = "1.6";
+const ENTITIES_HEADER_TEMPLATE_VERSION = "1.7";
 
 class EntitiesHeaderTemplate extends HTMLElement {
   static async getConfigElement() {
@@ -388,15 +388,12 @@ class EntitiesHeaderTemplate extends HTMLElement {
         ? `
           .card-header {
             display: flex !important;
-            align-items: center !important;
             justify-content: center !important;
             position: relative !important;
             box-sizing: border-box !important;
             width: 100% !important;
             max-width: 100% !important;
             min-width: 0 !important;
-            padding-left: 48px !important;
-            padding-right: 48px !important;
             overflow: hidden !important;
             text-align: center !important;
             white-space: nowrap !important;
@@ -414,7 +411,6 @@ class EntitiesHeaderTemplate extends HTMLElement {
             white-space: nowrap !important;
             text-overflow: ellipsis !important;
             pointer-events: none !important;
-            transform: translateY(1px) !important;
           }
           .card-header ha-switch,
           .card-header ha-icon-button {
@@ -443,7 +439,6 @@ class EntitiesHeaderTemplate extends HTMLElement {
             white-space: nowrap !important;
             text-overflow: ellipsis !important;
             pointer-events: none !important;
-            transform: translateY(1px) !important;
           }
         `;
     let style = root.querySelector("#entities-header-template-style");
