@@ -86,8 +86,8 @@ test("fallback editing listens for blur instead of emitting config per keystroke
   assert.ok(!handler.includes("this._fire()"));
 });
 
-test("header text receives one-pixel optical adjustment in both alignment modes", () => {
-  const matches = source.match(/transform: translateY\(1px\) !important;/g) || [];
+test("header text receives eleven-pixel optical adjustment in both alignment modes", () => {
+  const matches = source.match(/transform: translateY\(11px\) !important;/g) || [];
   assert.equal(matches.length, 2);
-  assert.ok(source.includes('const ENTITIES_HEADER_TEMPLATE_VERSION = "1.4";'));
+  assert.ok(source.includes('const ENTITIES_HEADER_TEMPLATE_VERSION = "1.5";'));
 });
