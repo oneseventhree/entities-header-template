@@ -1,5 +1,10 @@
 # Changelog
 
+## V1.6
+
+- Restore the previous approximately 20px top-to-title spacing from V1.4, undoing V1.5's additional downward offset.
+- Preserve the existing header font, centering, fallback styling and entity-row layout.
+
 ## V1.5
 
 - Move the header text down by a total of 11px from its original position, targeting approximately 30px between the card top and the title in the supplied screenshot.
