@@ -1,5 +1,11 @@
 # Changelog
 
+## V1.7
+
+- Restore the native Home Assistant Entities card header's vertical positioning and padding.
+- Remove artificial title translation and vertical alignment overrides that could move the heading into the first entity row.
+- Keep the live template and fallback title in the same native header, with optional horizontal centring and existing custom font styling.
+
 ## V1.6
 
 - Restore the previous approximately 20px top-to-title spacing from V1.4, undoing V1.5's additional downward offset.
