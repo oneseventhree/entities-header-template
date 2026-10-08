@@ -1,4 +1,4 @@
-const ENTITIES_HEADER_TEMPLATE_VERSION = "1.0";
+const ENTITIES_HEADER_TEMPLATE_VERSION = "1.1";
 
 class EntitiesHeaderTemplate extends HTMLElement {
   static async getConfigElement() {
@@ -168,11 +168,9 @@ class EntitiesHeaderTemplate extends HTMLElement {
     });
   }
   _getHeaderTextElement() {
-    if (!this._card?.shadowRoot) return null;
-    return (
-      this._card.shadowRoot.querySelector(".card-header .name") ||
-      this._card.shadowRoot.querySelector(".card-header")
-    );
+    // Never write the title into the outer h1. The fallback and rendered
+    // template must use the same .name element and inherit identical styling.
+    return this._card?.shadowRoot?.querySelector(".card-header .name") || null;
   }
   _getHeaderElement() {
     if (!this._card?.shadowRoot) return null;
