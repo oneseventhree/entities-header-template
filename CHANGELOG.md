@@ -1,5 +1,11 @@
 # Changelog
 
+## V1.2
+
+- Keep the last rendered header visible while editing the fallback title or entity rows, preventing a temporary switch to the native header.
+- Use the current rendered title when reconfiguring the underlying Entities card.
+- Ignore outdated template results and finish resubscribing after rapid template edits.
+
 ## V1.1
 
 - Keep fallback and live template titles in the same styled header text element, so they inherit the same font size, weight and alignment.
