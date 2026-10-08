@@ -17,7 +17,9 @@ const context = {
   },
   window: { customCards: [] },
   console: { info() {} },
-  requestAnimationFrame(callback) { callback(); }
+  requestAnimationFrame(callback) { callback(); return 1; },
+  cancelAnimationFrame() {},
+  getComputedStyle() { return { marginTop: "0px" }; }
 };
 vm.runInNewContext(source, context, { filename: "entities-header-template.js" });
 
@@ -98,5 +100,71 @@ test("template header preserves native vertical position and padding", () => {
   assert.ok(!style.includes("padding-right: 48px"));
   assert.ok(!style.includes("align-items: center !important"));
   assert.ok(style.includes("text-align: center !important"));
-  assert.ok(source.includes('const ENTITIES_HEADER_TEMPLATE_VERSION = "1.7";'));
+  assert.ok(source.includes('const ENTITIES_HEADER_TEMPLATE_VERSION = "1.8";'));
+});
+
+function makeFirstRowFixture(firstGap) {
+  const states = {
+    style: { marginTop: "" },
+    children: [],
+  };
+  const header = {
+    getBoundingClientRect: () => ({ bottom: 100 }),
+    getClientRects: () => [{}]
+  };
+  const name = {
+    getClientRects: () => [{}],
+    getBoundingClientRect: () => ({
+      top: 100 + firstGap + (parseFloat(states.style.marginTop) || 0)
+    })
+  };
+  const row = {
+    localName: "div",
+    hidden: false,
+    style: { display: "" },
+    getClientRects: () => [{}],
+    children: [
+      {
+        localName: "hui-generic-entity-row",
+        shadowRoot: { querySelector: (selector) => selector === ".info" ? name : null, children: [] },
+        children: []
+      }
+    ]
+  };
+  states.children = [row];
+  const card = new Header();
+  card._card = {
+    shadowRoot: {
+      querySelector: (selector) => ({
+        "#states": states,
+        ".card-header .name": header
+      })[selector] || null
+    }
+  };
+  return { card, states, header, name, row };
+}
+
+test("equal header-to-first-name gap for single-line and secondary-text rows", () => {
+  const single = makeFirstRowFixture(52);
+  const secondary = makeFirstRowFixture(20);
+  single.card._updateFirstRowSpacing();
+  secondary.card._updateFirstRowSpacing();
+  const gap = ({ name, header }) =>
+    name.getBoundingClientRect().top - header.getBoundingClientRect().bottom;
+  assert.equal(gap(single), 36);
+  assert.equal(gap(secondary), 36);
+  assert.equal(parseFloat(single.states.style.marginTop), -16);
+  assert.equal(parseFloat(secondary.states.style.marginTop), 16);
+  single.card._clearFirstRowSpacing();
+  secondary.card._clearFirstRowSpacing();
+  assert.equal(single.states.style.marginTop, "");
+  assert.equal(secondary.states.style.marginTop, "");
+});
+
+test("no first row name means no forced spacing", () => {
+  const fixture = makeFirstRowFixture(52);
+  fixture.row.children = [];
+  fixture.card._updateFirstRowSpacing();
+  assert.equal(fixture.states.style.marginTop, "");
+  fixture.card._clearFirstRowSpacing();
 });
