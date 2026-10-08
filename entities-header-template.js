@@ -424,10 +424,10 @@ class EntitiesHeaderTemplate extends HTMLElement {
     const queue = [element];
     for (let visited = 0; queue.length && visited < 160; visited++) {
       const node = queue.shift();
-      if (node.localName === "hui-generic-entity-row") {
-        const name = node.shadowRoot?.querySelector(".info");
-        if (name && name.getClientRects().length) return name;
-      }
+      // Custom template rows can render their visible name directly,
+      // while standard and multiple-entity rows nest hui-generic-entity-row.
+      const name = node.shadowRoot?.querySelector(".info");
+      if (name && name.getClientRects().length) return name;
       if (node.shadowRoot) queue.push(...node.shadowRoot.children);
       queue.push(...node.children);
     }
