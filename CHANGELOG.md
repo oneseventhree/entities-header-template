@@ -1,5 +1,13 @@
 # Changelog
 
+## V1.12
+
+- Remove the automatic first-row spacing adjustment introduced in V1.8. Live diagnostics showed it added approximately 22px of unwanted spacing on templated cards versus native Entities cards.
+- Let Home Assistant position icons, labels and rows naturally, including custom multiple-entity rows, without changing the first-row margin.
+- Remove the associated animation-frame retry, MutationObserver and ResizeObserver spacing logic.
+- Keep header templates, fallback titles, horizontal centring, actions, and card_mod compatibility unchanged.
+- Add regression tests verifying the native row margin is not modified.
+
 ## V1.11
 
 - Align the first visible entity row's icon badge to a consistent position beneath the header across cards.
