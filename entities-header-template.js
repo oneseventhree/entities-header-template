@@ -1,5 +1,5 @@
-const ENTITIES_HEADER_TEMPLATE_VERSION = "1.9";
-const ENTITIES_HEADER_TEMPLATE_FIRST_ROW_GAP = 36;
+const ENTITIES_HEADER_TEMPLATE_VERSION = "1.10";
+const ENTITIES_HEADER_TEMPLATE_FIRST_ROW_GAP = 20;
 
 class EntitiesHeaderTemplate extends HTMLElement {
   static async getConfigElement() {
