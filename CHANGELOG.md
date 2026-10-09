@@ -1,5 +1,13 @@
 # Changelog
 
+## V1.9
+
+- Fix inconsistent space between the header and first entity caused by V1.8 measuring rows before Home Assistant finished rendering.
+- Retry initial row measurement for a limited time and measure the visible first line instead of its multiline info container.
+- Allow the full normal spacing adjustment rather than stopping at the old 48px limit.
+- Recalculate for changed/hidden rows while ignoring the card's own spacing changes to prevent feedback loops.
+- Add tests for delayed row rendering, wide initial gaps and first-line label placement.
+
 ## V1.8
 
 - Keep a consistent 36px gap between the bottom of the header text and the top of the first visible entity name, whether its row has secondary text or not.
