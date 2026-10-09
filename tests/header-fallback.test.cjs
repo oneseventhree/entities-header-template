@@ -125,7 +125,7 @@ test("template header preserves native vertical position and padding", () => {
   assert.ok(!style.includes("padding-right: 48px"));
   assert.ok(!style.includes("align-items: center !important"));
   assert.ok(style.includes("text-align: center !important"));
-  assert.ok(source.includes('const ENTITIES_HEADER_TEMPLATE_VERSION = "1.9";'));
+  assert.ok(source.includes('const ENTITIES_HEADER_TEMPLATE_VERSION = "1.10";'));
 });
 
 function makeFirstRowFixture(firstGap) {
@@ -171,15 +171,15 @@ function makeFirstRowFixture(firstGap) {
 
 test("equal header-to-first-name gap for single-line and secondary-text rows", () => {
   const single = makeFirstRowFixture(52);
-  const secondary = makeFirstRowFixture(20);
+  const secondary = makeFirstRowFixture(12);
   single.card._updateFirstRowSpacing();
   secondary.card._updateFirstRowSpacing();
   const gap = ({ name, header }) =>
     name.getBoundingClientRect().top - header.getBoundingClientRect().bottom;
-  assert.equal(gap(single), 36);
-  assert.equal(gap(secondary), 36);
-  assert.equal(parseFloat(single.states.style.marginTop), -16);
-  assert.equal(parseFloat(secondary.states.style.marginTop), 16);
+  assert.equal(gap(single), 20);
+  assert.equal(gap(secondary), 20);
+  assert.equal(parseFloat(single.states.style.marginTop), -32);
+  assert.equal(parseFloat(secondary.states.style.marginTop), 8);
   single.card._clearFirstRowSpacing();
   secondary.card._clearFirstRowSpacing();
   assert.equal(single.states.style.marginTop, "");
@@ -233,10 +233,10 @@ test("unsupported first visible row does not shift later rows", () => {
 test("large native header gaps are corrected beyond the old 48px limit", () => {
   const fixture = makeFirstRowFixture(116);
   fixture.card._updateFirstRowSpacing();
-  assert.equal(parseFloat(fixture.states.style.marginTop), -80);
+  assert.equal(parseFloat(fixture.states.style.marginTop), -96);
   assert.equal(
     fixture.name.getBoundingClientRect().top - fixture.header.getBoundingClientRect().bottom,
-    36
+    20
   );
   fixture.card._clearFirstRowSpacing();
 });
@@ -253,7 +253,7 @@ test("first visible row is retried if it finishes rendering a few frames later",
   assert.equal(fixture.states.style.marginTop, "");
   ready = true;
   runFrames(5);
-  assert.equal(parseFloat(fixture.states.style.marginTop), -68);
+  assert.equal(parseFloat(fixture.states.style.marginTop), -84);
   fixture.card._clearFirstRowSpacing();
 });
 
@@ -268,11 +268,11 @@ test("measures visible first-line text rather than the multiline info container"
     })
   }];
   fixture.card._updateFirstRowSpacing();
-  assert.equal(parseFloat(fixture.states.style.marginTop), -77);
+  assert.equal(parseFloat(fixture.states.style.marginTop), -93);
   assert.equal(
     fixture.card._getFirstRowNameTop(fixture.name) -
       fixture.header.getBoundingClientRect().bottom,
-    36
+    20
   );
   fixture.card._clearFirstRowSpacing();
 });
