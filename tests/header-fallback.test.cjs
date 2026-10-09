@@ -9,6 +9,8 @@ const source = fs.readFileSync(
   "utf8"
 );
 const elements = new Map();
+const frames = new Map();
+let frameId = 0;
 const context = {
   HTMLElement: class {},
   customElements: {
@@ -17,14 +19,37 @@ const context = {
   },
   window: { customCards: [] },
   console: { info() {} },
-  requestAnimationFrame(callback) { callback(); return 1; },
-  cancelAnimationFrame() {},
-  getComputedStyle() { return { marginTop: "0px" }; }
+  requestAnimationFrame(callback) {
+    const id = ++frameId;
+    frames.set(id, callback);
+    return id;
+  },
+  cancelAnimationFrame(id) { frames.delete(id); },
+  getComputedStyle() { return { marginTop: "0px" }; },
+  document: {
+    createRange() {
+      let textNode = null;
+      return {
+        selectNodeContents(node) { textNode = node; },
+        getBoundingClientRect() { return textNode.rect(); }
+      };
+    }
+  }
 };
 vm.runInNewContext(source, context, { filename: "entities-header-template.js" });
 
 const Header = elements.get("entities-header-template");
 const Editor = elements.get("entities-header-template-editor");
+function runFrames(max = 100) {
+  let count = 0;
+  while (frames.size && count < max) {
+    const [id, callback] = frames.entries().next().value;
+    frames.delete(id);
+    callback();
+    count++;
+  }
+  return count;
+}
 
 test("fallback draft is committed once on blur, not while typing", () => {
   const editor = new Editor();
@@ -100,7 +125,7 @@ test("template header preserves native vertical position and padding", () => {
   assert.ok(!style.includes("padding-right: 48px"));
   assert.ok(!style.includes("align-items: center !important"));
   assert.ok(style.includes("text-align: center !important"));
-  assert.ok(source.includes('const ENTITIES_HEADER_TEMPLATE_VERSION = "1.8";'));
+  assert.ok(source.includes('const ENTITIES_HEADER_TEMPLATE_VERSION = "1.9";'));
 });
 
 function makeFirstRowFixture(firstGap) {
@@ -202,5 +227,52 @@ test("unsupported first visible row does not shift later rows", () => {
   fixture.states.children.unshift(unsupported);
   fixture.card._updateFirstRowSpacing();
   assert.equal(fixture.states.style.marginTop, "");
+  fixture.card._clearFirstRowSpacing();
+});
+
+test("large native header gaps are corrected beyond the old 48px limit", () => {
+  const fixture = makeFirstRowFixture(116);
+  fixture.card._updateFirstRowSpacing();
+  assert.equal(parseFloat(fixture.states.style.marginTop), -80);
+  assert.equal(
+    fixture.name.getBoundingClientRect().top - fixture.header.getBoundingClientRect().bottom,
+    36
+  );
+  fixture.card._clearFirstRowSpacing();
+});
+
+test("first visible row is retried if it finishes rendering a few frames later", () => {
+  runFrames();
+  const fixture = makeFirstRowFixture(104);
+  const root = fixture.card._card.shadowRoot;
+  const initialLookup = root.querySelector;
+  let ready = false;
+  root.querySelector = (selector) => ready ? initialLookup(selector) : null;
+  fixture.card._scheduleFirstRowSpacing();
+  runFrames(3);
+  assert.equal(fixture.states.style.marginTop, "");
+  ready = true;
+  runFrames(5);
+  assert.equal(parseFloat(fixture.states.style.marginTop), -68);
+  fixture.card._clearFirstRowSpacing();
+});
+
+test("measures visible first-line text rather than the multiline info container", () => {
+  const fixture = makeFirstRowFixture(100);
+  fixture.name.childNodes = [{
+    nodeType: 3,
+    textContent: "Work Alarm",
+    rect: () => ({
+      top: fixture.name.getBoundingClientRect().top + 13,
+      height: 24
+    })
+  }];
+  fixture.card._updateFirstRowSpacing();
+  assert.equal(parseFloat(fixture.states.style.marginTop), -77);
+  assert.equal(
+    fixture.card._getFirstRowNameTop(fixture.name) -
+      fixture.header.getBoundingClientRect().bottom,
+    36
+  );
   fixture.card._clearFirstRowSpacing();
 });
