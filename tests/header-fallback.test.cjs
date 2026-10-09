@@ -125,169 +125,77 @@ test("template header preserves native vertical position and padding", () => {
   assert.ok(!style.includes("padding-right: 48px"));
   assert.ok(!style.includes("align-items: center !important"));
   assert.ok(style.includes("text-align: center !important"));
-  assert.ok(source.includes('const ENTITIES_HEADER_TEMPLATE_VERSION = "1.11";'));
+  assert.ok(source.includes('const ENTITIES_HEADER_TEMPLATE_VERSION = "1.12";'));
 });
 
-function makeFirstRowFixture(firstGap, textOffset = 0) {
-  const states = {
-    style: { marginTop: "" },
-    children: []
-  };
-  const header = {
-    getBoundingClientRect: () => ({ bottom: 100 }),
-    getClientRects: () => [{}]
-  };
-  const icon = {
-    getClientRects: () => [{}],
-    getBoundingClientRect: () => ({
-      top: 100 + firstGap + (parseFloat(states.style.marginTop) || 0),
-      height: 40
-    })
-  };
-  const name = {
-    getClientRects: () => [{}],
-    getBoundingClientRect: () => ({
-      top: icon.getBoundingClientRect().top + textOffset
-    })
-  };
-  const row = {
-    localName: "div",
-    hidden: false,
-    style: { display: "" },
-    getClientRects: () => [{}],
-    children: [{
-      localName: "hui-generic-entity-row",
-      shadowRoot: {
-        querySelector: (selector) => selector === ".row > state-badge" ? icon :
-          selector === ".info" ? name : null,
-        children: []
-      },
-      children: []
-    }]
-  };
-  states.children = [row];
+test("native first-row spacing is never modified during configuration or refresh", () => {
   const card = new Header();
+  const states = { style: { marginTop: "" } };
+  const forwarded = [];
   card._card = {
     shadowRoot: {
-      querySelector: (selector) => ({
-        "#states": states,
-        ".card-header .name": header
-      })[selector] || null
-    }
-  };
-  return { card, states, header, icon, name, row };
-}
-
-test("align first-row icon badges regardless of label or secondary-text offset", () => {
-  const office = makeFirstRowFixture(52, 0);
-  const home = makeFirstRowFixture(12, -8);
-  const living = makeFirstRowFixture(30, 6);
-  const fixtures = [office, home, living];
-  fixtures.forEach(({card}) => card._updateFirstRowSpacing());
-  const gap = ({ icon, header }) =>
-    icon.getBoundingClientRect().top - header.getBoundingClientRect().bottom;
-  fixtures.forEach((fixture) => assert.equal(gap(fixture), 20));
-  assert.equal(parseFloat(office.states.style.marginTop), -32);
-  assert.equal(parseFloat(home.states.style.marginTop), 8);
-  assert.equal(parseFloat(living.states.style.marginTop), -10);
-  // Text positions remain native to each row instead of being forced to match.
-  assert.equal(home.name.getBoundingClientRect().top -
-    home.icon.getBoundingClientRect().top, -8);
-  fixtures.forEach(({card, states}) => {
-    card._clearFirstRowSpacing();
-    assert.equal(states.style.marginTop, "");
-  });
-});
-
-test("missing first row icon leaves native spacing intact", () => {
-  const fixture = makeFirstRowFixture(52);
-  fixture.row.children = [];
-  fixture.card._updateFirstRowSpacing();
-  assert.equal(fixture.states.style.marginTop, "");
-  fixture.card._clearFirstRowSpacing();
-});
-
-test("custom rows use the visible nested state badge, not hidden staging", () => {
-  const card = new Header();
-  const visible = { getClientRects: () => [{}] };
-  const staging = { getClientRects: () => [] };
-  const customRow = {
-    localName: "template-entity-row",
-    shadowRoot: {
-      querySelector: () => null,
-      children: [{
-        localName: "hui-generic-entity-row",
-        shadowRoot: {
-          querySelector: (selector) =>
-            selector === ".row > state-badge" ? staging : null,
-          children: []
-        },
-        children: []
-      }, {
-        localName: "hui-generic-entity-row",
-        shadowRoot: {
-          querySelector: (selector) =>
-            selector === ".row > state-badge" ? visible : null,
-          children: []
-        },
-        children: []
-      }]
+      querySelector(selector) {
+        return selector === "#states" ? states : null;
+      }
     },
-    children: []
+    setConfig(config) { forwarded.push(config); }
   };
-  assert.equal(card._findFirstRowIcon(customRow), visible);
-});
+  card._applyHeaderStyle = () => {};
+  card._setHeaderText = () => {};
+  card._bindHeaderActions = () => {};
+  card._subscribeTemplate = () => {};
 
-test("unsupported first visible row does not shift later rows", () => {
-  const fixture = makeFirstRowFixture(18);
-  const unsupported = {
-    localName: "custom-unsupported-row",
-    hidden: false,
-    style: { display: "" },
-    getClientRects: () => [{}],
-    children: []
+  const config = {
+    title_template: "Living Room",
+    fallback_title: "Living Room",
+    center_header_template: true,
+    entities: [{ entity: "light.example" }],
+    card_mod: { style: ".card-header { padding: 5px !important; }" }
   };
-  fixture.states.children.unshift(unsupported);
-  fixture.card._updateFirstRowSpacing();
-  assert.equal(fixture.states.style.marginTop, "");
-  fixture.card._clearFirstRowSpacing();
-});
-
-test("large native header gaps are corrected beyond the old 48px limit", () => {
-  const fixture = makeFirstRowFixture(116);
-  fixture.card._updateFirstRowSpacing();
-  assert.equal(parseFloat(fixture.states.style.marginTop), -96);
-  assert.equal(
-    fixture.icon.getBoundingClientRect().top - fixture.header.getBoundingClientRect().bottom,
-    20
-  );
-  fixture.card._clearFirstRowSpacing();
-});
-
-test("first visible row is retried if it finishes rendering a few frames later", () => {
+  card.setConfig(config);
   runFrames();
-  const fixture = makeFirstRowFixture(104);
-  const root = fixture.card._card.shadowRoot;
-  const originalLookup = root.querySelector;
-  let ready = false;
-  root.querySelector = (selector) => ready ? originalLookup(selector) : null;
-  fixture.card._scheduleFirstRowSpacing();
-  runFrames(3);
-  assert.equal(fixture.states.style.marginTop, "");
-  ready = true;
-  runFrames(5);
-  assert.equal(parseFloat(fixture.states.style.marginTop), -84);
-  fixture.card._clearFirstRowSpacing();
+  card.hass = { states: {} };
+  runFrames();
+  assert.equal(states.style.marginTop, "");
+  assert.equal(forwarded.length, 1);
+  assert.equal(forwarded[0].title, "Living Room");
+  assert.equal(forwarded[0].card_mod.style, config.card_mod.style);
+  assert.equal(Object.hasOwn(card, "_spacingOffset"), false);
 });
 
-test("text height changes do not alter an already aligned icon position", () => {
-  const fixture = makeFirstRowFixture(48, -8);
-  fixture.card._updateFirstRowSpacing();
-  assert.equal(parseFloat(fixture.states.style.marginTop), -28);
-  fixture.name.getBoundingClientRect = () => ({
-    top: fixture.icon.getBoundingClientRect().top + 21
-  });
-  fixture.card._updateFirstRowSpacing();
-  assert.equal(parseFloat(fixture.states.style.marginTop), -28);
-  fixture.card._clearFirstRowSpacing();
+test("first row remains natively positioned regardless of icon and text geometry", () => {
+  for (const iconTop of [90, 120, 155]) {
+    const card = new Header();
+    const states = {
+      style: { marginTop: "" },
+      children: [{ iconTop }]
+    };
+    card._card = {
+      shadowRoot: { querySelector: () => states },
+      setConfig() {}
+    };
+    card._applyHeaderStyle = () => {};
+    card._setHeaderText = () => {};
+    card._bindHeaderActions = () => {};
+    card._subscribeTemplate = () => {};
+    card.setConfig({ title_template: "Room", entities: [{}] });
+    runFrames();
+    assert.equal(states.style.marginTop, "");
+  }
 });
+
+test("no spacing corrections or observers remain in the card runtime", () => {
+  for (const obsolete of [
+    "ENTITIES_HEADER_TEMPLATE_FIRST_ICON_GAP",
+    "_scheduleFirstRowSpacing",
+    "_updateFirstRowSpacing",
+    "_clearFirstRowSpacing",
+    "_spacingOffset",
+    "states.style.marginTop",
+    "ResizeObserver",
+    "MutationObserver"
+  ]) {
+    assert.equal(source.includes(obsolete), false, obsolete);
+  }
+});
+
