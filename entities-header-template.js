@@ -1,4 +1,4 @@
-const ENTITIES_HEADER_TEMPLATE_VERSION = "1.8";
+const ENTITIES_HEADER_TEMPLATE_VERSION = "1.9";
 const ENTITIES_HEADER_TEMPLATE_FIRST_ROW_GAP = 36;
 
 class EntitiesHeaderTemplate extends HTMLElement {
@@ -41,6 +41,7 @@ class EntitiesHeaderTemplate extends HTMLElement {
     this._boundHeader = null;
     this._headerActionAbort = null;
     this._spacingFrame = null;
+    this._spacingAttempts = 0;
     this._spacingStates = null;
     this._spacingOriginalMargin = "";
     this._spacingBaseMargin = 0;
@@ -88,6 +89,7 @@ class EntitiesHeaderTemplate extends HTMLElement {
       this._card.hass = hass;
     }
     this._subscribeTemplate();
+    this._spacingAttempts = 0;
     this._scheduleFirstRowSpacing();
   }
   getCardSize() {
@@ -398,7 +400,14 @@ class EntitiesHeaderTemplate extends HTMLElement {
     if (this._spacingFrame !== null) return;
     this._spacingFrame = requestAnimationFrame(() => {
       this._spacingFrame = null;
-      this._updateFirstRowSpacing();
+      const ready = this._updateFirstRowSpacing();
+      if (ready) {
+        this._spacingAttempts = 0;
+      } else if (++this._spacingAttempts < 60) {
+        // HA and custom rows render asynchronously, often after the first frame.
+        // Retry for a bounded period rather than permanently missing the row.
+        this._scheduleFirstRowSpacing();
+      }
     });
   }
   _clearFirstRowSpacing() {
@@ -424,8 +433,6 @@ class EntitiesHeaderTemplate extends HTMLElement {
     const queue = [element];
     for (let visited = 0; queue.length && visited < 160; visited++) {
       const node = queue.shift();
-      // Custom template rows can render their visible name directly,
-      // while standard and multiple-entity rows nest hui-generic-entity-row.
       const name = node.shadowRoot?.querySelector(".info");
       if (name && name.getClientRects().length) return name;
       if (node.shadowRoot) queue.push(...node.shadowRoot.children);
@@ -433,31 +440,59 @@ class EntitiesHeaderTemplate extends HTMLElement {
     }
     return null;
   }
+  _getFirstRowNameTop(info) {
+    // Home Assistant's .info also contains secondary text. Measure the actual
+    // first-line text rather than the full .info box when possible.
+    if (typeof document !== "undefined" && document.createRange) {
+      const nameText = Array.from(info.childNodes || []).find(
+        node => node.nodeType === 3 && node.textContent?.trim()
+      );
+      if (nameText) {
+        const range = document.createRange();
+        range.selectNodeContents(nameText);
+        const rect = range.getBoundingClientRect();
+        if (rect?.height > 0) return rect.top;
+      }
+    }
+    return info.getBoundingClientRect().top;
+  }
   _updateFirstRowSpacing() {
     const states = this._card?.shadowRoot?.querySelector("#states");
-    if (!states) return;
+    if (!states) return false;
     if (this._spacingStates !== states) {
       this._clearFirstRowSpacing();
       this._spacingStates = states;
       this._spacingOriginalMargin = states.style.marginTop;
       this._spacingBaseMargin = parseFloat(getComputedStyle(states).marginTop) || 0;
       if (typeof MutationObserver !== "undefined") {
-        this._spacingMutations = new MutationObserver(() => this._scheduleFirstRowSpacing());
+        this._spacingMutations = new MutationObserver(records => {
+          // Ignore our own margin changes, but react to hidden/conditional rows.
+          if (records.every(record => (
+            record.target === states && record.attributeName === "style"
+          ))) return;
+          this._spacingAttempts = 0;
+          this._scheduleFirstRowSpacing();
+        });
         this._spacingMutations.observe(states, {
           childList: true,
           subtree: true,
           attributes: true,
-          attributeFilter: ["hidden"]
+          attributeFilter: ["hidden", "style"]
         });
       }
       if (typeof ResizeObserver !== "undefined") {
-        this._spacingResize = new ResizeObserver(() => this._scheduleFirstRowSpacing());
+        this._spacingResize = new ResizeObserver(() => {
+          this._spacingAttempts = 0;
+          this._scheduleFirstRowSpacing();
+        });
       }
     }
     const header = this._getHeaderTextElement();
     let name = null;
+    let firstVisibleRow = false;
     for (const row of states.children) {
       if (row.hidden || row.style.display === "none" || !row.getClientRects().length) continue;
+      firstVisibleRow = true;
       name = this._findFirstRowName(row);
       break;
     }
@@ -473,17 +508,20 @@ class EntitiesHeaderTemplate extends HTMLElement {
         this._spacingOffset = 0;
         states.style.marginTop = this._spacingOriginalMargin;
       }
-      return;
+      // Empty cards and unsupported rows should retain native spacing.
+      // A row still waiting for its shadow DOM should get another chance.
+      return !firstVisibleRow;
     }
-    const gap = name.getBoundingClientRect().top - header.getBoundingClientRect().bottom;
-    if (!Number.isFinite(gap)) return;
+    const gap = this._getFirstRowNameTop(name) - header.getBoundingClientRect().bottom;
+    if (!Number.isFinite(gap) || gap < -120 || gap > 400) return true;
     const correction = ENTITIES_HEADER_TEMPLATE_FIRST_ROW_GAP - gap;
-    if (Math.abs(correction) < 0.75) return;
-    // Limit the adjustment if an unusual custom row reports an unexpected rect.
-    const next = Math.max(-48, Math.min(64, this._spacingOffset + correction));
-    if (Math.abs(next - this._spacingOffset) < 0.75) return;
+    if (Math.abs(correction) < 0.75) return true;
+    // Support ordinary native gaps over 100px while bounding bad measurements.
+    const next = Math.max(-120, Math.min(96, this._spacingOffset + correction));
+    if (Math.abs(next - this._spacingOffset) < 0.75) return true;
     this._spacingOffset = next;
     states.style.marginTop = `${this._spacingBaseMargin + next}px`;
+    return true;
   }
   _applyHeaderStyle() {
     const root = this._card?.shadowRoot;
