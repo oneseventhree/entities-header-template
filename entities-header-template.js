@@ -1,5 +1,5 @@
-const ENTITIES_HEADER_TEMPLATE_VERSION = "1.10";
-const ENTITIES_HEADER_TEMPLATE_FIRST_ROW_GAP = 20;
+const ENTITIES_HEADER_TEMPLATE_VERSION = "1.11";
+const ENTITIES_HEADER_TEMPLATE_FIRST_ICON_GAP = 20;
 
 class EntitiesHeaderTemplate extends HTMLElement {
   static async getConfigElement() {
@@ -46,7 +46,7 @@ class EntitiesHeaderTemplate extends HTMLElement {
     this._spacingOriginalMargin = "";
     this._spacingBaseMargin = 0;
     this._spacingOffset = 0;
-    this._spacingName = null;
+    this._spacingIcon = null;
     this._spacingHeader = null;
     this._spacingMutations = null;
     this._spacingResize = null;
@@ -423,38 +423,24 @@ class EntitiesHeaderTemplate extends HTMLElement {
     this._spacingStates = null;
     this._spacingMutations = null;
     this._spacingResize = null;
-    this._spacingName = null;
+    this._spacingIcon = null;
     this._spacingHeader = null;
     this._spacingOriginalMargin = "";
     this._spacingBaseMargin = 0;
     this._spacingOffset = 0;
   }
-  _findFirstRowName(element) {
+  _findFirstRowIcon(element) {
+    // The title and secondary text are positioned independently.
+    // Anchor spacing to Home Assistant's standard icon badge instead.
     const queue = [element];
     for (let visited = 0; queue.length && visited < 160; visited++) {
       const node = queue.shift();
-      const name = node.shadowRoot?.querySelector(".info");
-      if (name && name.getClientRects().length) return name;
+      const badge = node.shadowRoot?.querySelector(".row > state-badge");
+      if (badge && badge.getClientRects().length) return badge;
       if (node.shadowRoot) queue.push(...node.shadowRoot.children);
       queue.push(...node.children);
     }
     return null;
-  }
-  _getFirstRowNameTop(info) {
-    // Home Assistant's .info also contains secondary text. Measure the actual
-    // first-line text rather than the full .info box when possible.
-    if (typeof document !== "undefined" && document.createRange) {
-      const nameText = Array.from(info.childNodes || []).find(
-        node => node.nodeType === 3 && node.textContent?.trim()
-      );
-      if (nameText) {
-        const range = document.createRange();
-        range.selectNodeContents(nameText);
-        const rect = range.getBoundingClientRect();
-        if (rect?.height > 0) return rect.top;
-      }
-    }
-    return info.getBoundingClientRect().top;
   }
   _updateFirstRowSpacing() {
     const states = this._card?.shadowRoot?.querySelector("#states");
@@ -488,22 +474,22 @@ class EntitiesHeaderTemplate extends HTMLElement {
       }
     }
     const header = this._getHeaderTextElement();
-    let name = null;
+    let icon = null;
     let firstVisibleRow = false;
     for (const row of states.children) {
       if (row.hidden || row.style.display === "none" || !row.getClientRects().length) continue;
       firstVisibleRow = true;
-      name = this._findFirstRowName(row);
+      icon = this._findFirstRowIcon(row);
       break;
     }
-    if (this._spacingResize && (name !== this._spacingName || header !== this._spacingHeader)) {
+    if (this._spacingResize && (icon !== this._spacingIcon || header !== this._spacingHeader)) {
       this._spacingResize.disconnect();
-      if (name) this._spacingResize.observe(name);
+      if (icon) this._spacingResize.observe(icon);
       if (header) this._spacingResize.observe(header);
     }
-    this._spacingName = name;
+    this._spacingIcon = icon;
     this._spacingHeader = header;
-    if (!header || !name) {
+    if (!header || !icon) {
       if (this._spacingOffset !== 0) {
         this._spacingOffset = 0;
         states.style.marginTop = this._spacingOriginalMargin;
@@ -512,11 +498,11 @@ class EntitiesHeaderTemplate extends HTMLElement {
       // A row still waiting for its shadow DOM should get another chance.
       return !firstVisibleRow;
     }
-    const gap = this._getFirstRowNameTop(name) - header.getBoundingClientRect().bottom;
+    const gap = icon.getBoundingClientRect().top - header.getBoundingClientRect().bottom;
     if (!Number.isFinite(gap) || gap < -120 || gap > 400) return true;
-    const correction = ENTITIES_HEADER_TEMPLATE_FIRST_ROW_GAP - gap;
+    const correction = ENTITIES_HEADER_TEMPLATE_FIRST_ICON_GAP - gap;
     if (Math.abs(correction) < 0.75) return true;
-    // Support ordinary native gaps over 100px while bounding bad measurements.
+    // Move the complete row section, preserving row content and layout.
     const next = Math.max(-120, Math.min(96, this._spacingOffset + correction));
     if (Math.abs(next - this._spacingOffset) < 0.75) return true;
     this._spacingOffset = next;
