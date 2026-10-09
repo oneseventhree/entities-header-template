@@ -1,5 +1,4 @@
-const ENTITIES_HEADER_TEMPLATE_VERSION = "1.11";
-const ENTITIES_HEADER_TEMPLATE_FIRST_ICON_GAP = 20;
+const ENTITIES_HEADER_TEMPLATE_VERSION = "1.12";
 
 class EntitiesHeaderTemplate extends HTMLElement {
   static async getConfigElement() {
@@ -40,16 +39,6 @@ class EntitiesHeaderTemplate extends HTMLElement {
     this._held = false;
     this._boundHeader = null;
     this._headerActionAbort = null;
-    this._spacingFrame = null;
-    this._spacingAttempts = 0;
-    this._spacingStates = null;
-    this._spacingOriginalMargin = "";
-    this._spacingBaseMargin = 0;
-    this._spacingOffset = 0;
-    this._spacingIcon = null;
-    this._spacingHeader = null;
-    this._spacingMutations = null;
-    this._spacingResize = null;
   }
   disconnectedCallback() {
     this._unsubscribeTemplate();
@@ -60,7 +49,6 @@ class EntitiesHeaderTemplate extends HTMLElement {
       this._headerActionAbort = null;
     }
     this._boundHeader = null;
-    this._clearFirstRowSpacing();
   }
   setConfig(config) {
     if (!config) throw new Error("Invalid configuration");
@@ -89,8 +77,6 @@ class EntitiesHeaderTemplate extends HTMLElement {
       this._card.hass = hass;
     }
     this._subscribeTemplate();
-    this._spacingAttempts = 0;
-    this._scheduleFirstRowSpacing();
   }
   getCardSize() {
     return this._card?.getCardSize ? this._card.getCardSize() : 3;
@@ -186,7 +172,6 @@ class EntitiesHeaderTemplate extends HTMLElement {
       this._applyHeaderStyle();
       this._setHeaderText(this._renderedTitle || this._config.fallback_title || "");
       this._bindHeaderActions();
-      this._scheduleFirstRowSpacing();
     });
   }
   _getHeaderTextElement() {
@@ -213,7 +198,6 @@ class EntitiesHeaderTemplate extends HTMLElement {
       }
       this._applyHeaderStyle();
       this._bindHeaderActions();
-      this._scheduleFirstRowSpacing();
     });
   }
   _bindHeaderActions() {
@@ -395,119 +379,6 @@ class EntitiesHeaderTemplate extends HTMLElement {
         composed: true
       }));
     }
-  }
-  _scheduleFirstRowSpacing() {
-    if (this._spacingFrame !== null) return;
-    this._spacingFrame = requestAnimationFrame(() => {
-      this._spacingFrame = null;
-      const ready = this._updateFirstRowSpacing();
-      if (ready) {
-        this._spacingAttempts = 0;
-      } else if (++this._spacingAttempts < 60) {
-        // HA and custom rows render asynchronously, often after the first frame.
-        // Retry for a bounded period rather than permanently missing the row.
-        this._scheduleFirstRowSpacing();
-      }
-    });
-  }
-  _clearFirstRowSpacing() {
-    if (this._spacingFrame !== null) {
-      cancelAnimationFrame(this._spacingFrame);
-      this._spacingFrame = null;
-    }
-    this._spacingMutations?.disconnect();
-    this._spacingResize?.disconnect();
-    if (this._spacingStates) {
-      this._spacingStates.style.marginTop = this._spacingOriginalMargin;
-    }
-    this._spacingStates = null;
-    this._spacingMutations = null;
-    this._spacingResize = null;
-    this._spacingIcon = null;
-    this._spacingHeader = null;
-    this._spacingOriginalMargin = "";
-    this._spacingBaseMargin = 0;
-    this._spacingOffset = 0;
-  }
-  _findFirstRowIcon(element) {
-    // The title and secondary text are positioned independently.
-    // Anchor spacing to Home Assistant's standard icon badge instead.
-    const queue = [element];
-    for (let visited = 0; queue.length && visited < 160; visited++) {
-      const node = queue.shift();
-      const badge = node.shadowRoot?.querySelector(".row > state-badge");
-      if (badge && badge.getClientRects().length) return badge;
-      if (node.shadowRoot) queue.push(...node.shadowRoot.children);
-      queue.push(...node.children);
-    }
-    return null;
-  }
-  _updateFirstRowSpacing() {
-    const states = this._card?.shadowRoot?.querySelector("#states");
-    if (!states) return false;
-    if (this._spacingStates !== states) {
-      this._clearFirstRowSpacing();
-      this._spacingStates = states;
-      this._spacingOriginalMargin = states.style.marginTop;
-      this._spacingBaseMargin = parseFloat(getComputedStyle(states).marginTop) || 0;
-      if (typeof MutationObserver !== "undefined") {
-        this._spacingMutations = new MutationObserver(records => {
-          // Ignore our own margin changes, but react to hidden/conditional rows.
-          if (records.every(record => (
-            record.target === states && record.attributeName === "style"
-          ))) return;
-          this._spacingAttempts = 0;
-          this._scheduleFirstRowSpacing();
-        });
-        this._spacingMutations.observe(states, {
-          childList: true,
-          subtree: true,
-          attributes: true,
-          attributeFilter: ["hidden", "style"]
-        });
-      }
-      if (typeof ResizeObserver !== "undefined") {
-        this._spacingResize = new ResizeObserver(() => {
-          this._spacingAttempts = 0;
-          this._scheduleFirstRowSpacing();
-        });
-      }
-    }
-    const header = this._getHeaderTextElement();
-    let icon = null;
-    let firstVisibleRow = false;
-    for (const row of states.children) {
-      if (row.hidden || row.style.display === "none" || !row.getClientRects().length) continue;
-      firstVisibleRow = true;
-      icon = this._findFirstRowIcon(row);
-      break;
-    }
-    if (this._spacingResize && (icon !== this._spacingIcon || header !== this._spacingHeader)) {
-      this._spacingResize.disconnect();
-      if (icon) this._spacingResize.observe(icon);
-      if (header) this._spacingResize.observe(header);
-    }
-    this._spacingIcon = icon;
-    this._spacingHeader = header;
-    if (!header || !icon) {
-      if (this._spacingOffset !== 0) {
-        this._spacingOffset = 0;
-        states.style.marginTop = this._spacingOriginalMargin;
-      }
-      // Empty cards and unsupported rows should retain native spacing.
-      // A row still waiting for its shadow DOM should get another chance.
-      return !firstVisibleRow;
-    }
-    const gap = icon.getBoundingClientRect().top - header.getBoundingClientRect().bottom;
-    if (!Number.isFinite(gap) || gap < -120 || gap > 400) return true;
-    const correction = ENTITIES_HEADER_TEMPLATE_FIRST_ICON_GAP - gap;
-    if (Math.abs(correction) < 0.75) return true;
-    // Move the complete row section, preserving row content and layout.
-    const next = Math.max(-120, Math.min(96, this._spacingOffset + correction));
-    if (Math.abs(next - this._spacingOffset) < 0.75) return true;
-    this._spacingOffset = next;
-    states.style.marginTop = `${this._spacingBaseMargin + next}px`;
-    return true;
   }
   _applyHeaderStyle() {
     const root = this._card?.shadowRoot;
