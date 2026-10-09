@@ -1,5 +1,12 @@
 # Changelog
 
+## V1.11
+
+- Align the first visible entity row's icon badge to a consistent position beneath the header across cards.
+- Use the icon's location instead of the entity name, since secondary text and multiple-entity rows change text positioning independently.
+- Retain the 20px header-to-first-icon target and the existing relative spacing between entity rows.
+- Skip adjustments for unsupported first rows rather than shift an unrelated entity row.
+
 ## V1.10
 
 - Reduce the target gap between the bottom of the header title and the top of the first entity name from 36px to 20px.
