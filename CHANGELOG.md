@@ -1,5 +1,10 @@
 # Changelog
 
+## V1.10
+
+- Reduce the target gap between the bottom of the header title and the top of the first entity name from 36px to 20px.
+- Retain first-row layout detection and all existing font, centering, and subsequent row styling.
+
 ## V1.9
 
 - Fix inconsistent space between the header and first entity caused by V1.8 measuring rows before Home Assistant finished rendering.
