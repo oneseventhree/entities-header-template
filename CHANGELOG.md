@@ -1,5 +1,12 @@
 # Changelog
 
+## V1.13
+
+- Add 12px of extra clearance beneath the header only when a conditional row is the first visible entity.
+- Handle Bedroom's Pill Vibration Sensor and Work Alarm switching in and out of the first-row position.
+- Keep Home Assistant's native spacing for ordinary first rows, and preserve all subsequent entity row spacing.
+- Use CSS visibility selectors without runtime observers, timing loops or global row-margin changes.
+
 ## V1.12
 
 - Remove the automatic first-row spacing adjustment introduced in V1.8. Live diagnostics showed it added approximately 22px of unwanted spacing on templated cards versus native Entities cards.
