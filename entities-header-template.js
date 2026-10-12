@@ -1,4 +1,4 @@
-const ENTITIES_HEADER_TEMPLATE_VERSION = "1.12";
+const ENTITIES_HEADER_TEMPLATE_VERSION = "1.13";
 
 class EntitiesHeaderTemplate extends HTMLElement {
   static async getConfigElement() {
@@ -441,14 +441,25 @@ class EntitiesHeaderTemplate extends HTMLElement {
             pointer-events: none !important;
           }
         `;
+    // Add clearance only when the first visible entity is a conditional row.
+    // Unlike a global #states margin, this leaves ordinary entity cards and
+    // all later conditional rows in Home Assistant's native layout.
+    const firstConditionalRowStyle = `
+      #states > div:nth-child(
+        1 of :not([hidden]):not([style*="display: none"]):not([style*="display:none"]):not(:has(> hui-conditional-row[hidden]))
+      ):has(> hui-conditional-row:not([hidden])) {
+        padding-block-start: 12px;
+      }
+    `;
+    const combinedStyleText = styleText + firstConditionalRowStyle;
     let style = root.querySelector("#entities-header-template-style");
     if (!style) {
       style = document.createElement("style");
       style.id = "entities-header-template-style";
       root.appendChild(style);
     }
-    if (style.textContent !== styleText) {
-      style.textContent = styleText;
+    if (style.textContent !== combinedStyleText) {
+      style.textContent = combinedStyleText;
     }
   }
 }
