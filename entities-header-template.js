@@ -1,4 +1,4 @@
-const ENTITIES_HEADER_TEMPLATE_VERSION = "1.14";
+const ENTITIES_HEADER_TEMPLATE_VERSION = "1.15";
 
 class EntitiesHeaderTemplate extends HTMLElement {
   static async getConfigElement() {
@@ -39,6 +39,11 @@ class EntitiesHeaderTemplate extends HTMLElement {
     this._held = false;
     this._boundHeader = null;
     this._headerActionAbort = null;
+    this._firstIconFrame = null;
+    this._firstIconAttempts = 0;
+    this._shiftedFirstIcon = null;
+    this._originalFirstIconTranslate = "";
+    this._firstConditionalVisibilityHandler = () => this._scheduleFirstIconAlignment(true);
   }
   disconnectedCallback() {
     this._unsubscribeTemplate();
@@ -49,6 +54,8 @@ class EntitiesHeaderTemplate extends HTMLElement {
       this._headerActionAbort = null;
     }
     this._boundHeader = null;
+    this._card?.removeEventListener("row-visibility-changed", this._firstConditionalVisibilityHandler);
+    this._clearFirstIconAlignment();
   }
   setConfig(config) {
     if (!config) throw new Error("Invalid configuration");
@@ -66,10 +73,12 @@ class EntitiesHeaderTemplate extends HTMLElement {
     if (templateChanged) this._renderedTitle = "";
     if (!this._card) {
       this._card = document.createElement("hui-entities-card");
+      this._card.addEventListener("row-visibility-changed", this._firstConditionalVisibilityHandler);
       this.appendChild(this._card);
     }
     this._updateEntitiesCardConfig();
     this._subscribeTemplate();
+    this._scheduleFirstIconAlignment();
   }
   set hass(hass) {
     this._hass = hass;
@@ -77,6 +86,7 @@ class EntitiesHeaderTemplate extends HTMLElement {
       this._card.hass = hass;
     }
     this._subscribeTemplate();
+    this._scheduleFirstIconAlignment();
   }
   getCardSize() {
     return this._card?.getCardSize ? this._card.getCardSize() : 3;
@@ -379,6 +389,78 @@ class EntitiesHeaderTemplate extends HTMLElement {
         composed: true
       }));
     }
+  }
+  _clearFirstIconAlignment() {
+    if (this._firstIconFrame !== null) {
+      cancelAnimationFrame(this._firstIconFrame);
+      this._firstIconFrame = null;
+    }
+    if (this._shiftedFirstIcon) {
+      this._shiftedFirstIcon.style.translate = this._originalFirstIconTranslate;
+      this._shiftedFirstIcon = null;
+      this._originalFirstIconTranslate = "";
+    }
+    this._firstIconAttempts = 0;
+  }
+  _scheduleFirstIconAlignment(retry = false) {
+    if (!this.isConnected || this._firstIconFrame !== null) return;
+    if (!retry) this._firstIconAttempts = 0;
+    this._firstIconFrame = requestAnimationFrame(() => {
+      this._firstIconFrame = null;
+      if (!this.isConnected) return;
+      const pending = this._alignFirstConditionalIcon();
+      if (pending && ++this._firstIconAttempts < 30) {
+        this._scheduleFirstIconAlignment(true);
+      }
+    });
+  }
+  _alignFirstConditionalIcon() {
+    const states = this._card?.shadowRoot?.querySelector("#states");
+    if (!states) return true;
+    // Hidden conditional rows must not displace the first visible entity.
+    const first = Array.from(states.children).find(row => {
+      if (row.hidden || getComputedStyle(row).display === "none") return false;
+      const conditional = row.querySelector("hui-conditional-row");
+      return !conditional || (!conditional.hidden &&
+        getComputedStyle(conditional).display !== "none");
+    });
+    const conditional = first?.querySelector("hui-conditional-row");
+    const template = conditional?.querySelector("template-entity-row");
+    const root = template?.shadowRoot;
+    const icon = root?.querySelector("#wrapper > .icon");
+    const info = root?.querySelector("#wrapper > .info");
+    if (!conditional || !template) {
+      this._clearFirstIconAlignment();
+      return false;
+    }
+    if (!icon || !info || !icon.getClientRects().length || !info.getClientRects().length) {
+      return true;
+    }
+    const nameNode = Array.from(info.childNodes).find(
+      node => node.nodeType === 3 && node.textContent?.trim()
+    );
+    if (!nameNode) return true;
+    const range = document.createRange();
+    range.selectNodeContents(nameNode);
+    const textRect = range.getBoundingClientRect();
+    const iconRect = icon.getBoundingClientRect();
+    if (!textRect.height || !iconRect.height) return true;
+    if (this._shiftedFirstIcon !== icon) {
+      this._clearFirstIconAlignment();
+      this._shiftedFirstIcon = icon;
+      this._originalFirstIconTranslate = icon.style.translate;
+    }
+    // Centre only the icon on the first text line. Do not move the name,
+    // the secondary line, the entire row, or any later entity row.
+    const oldShift = this._firstIconShift || 0;
+    const delta = textRect.top + textRect.height / 2 -
+      (iconRect.top + iconRect.height / 2);
+    const next = Math.max(-36, Math.min(36, oldShift + delta));
+    if (Math.abs(next - oldShift) >= 0.5) {
+      this._firstIconShift = next;
+      icon.style.translate = `0 ${next}px`;
+    }
+    return false;
   }
   _applyHeaderStyle() {
     const root = this._card?.shadowRoot;
