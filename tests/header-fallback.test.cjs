@@ -125,7 +125,7 @@ test("template header preserves native vertical position and padding", () => {
   assert.ok(!style.includes("padding-right: 48px"));
   assert.ok(!style.includes("align-items: center !important"));
   assert.ok(style.includes("text-align: center !important"));
-  assert.ok(source.includes('const ENTITIES_HEADER_TEMPLATE_VERSION = "1.13";'));
+  assert.ok(source.includes('const ENTITIES_HEADER_TEMPLATE_VERSION = "1.14";'));
 });
 
 test("native first-row spacing is never modified during configuration or refresh", () => {
@@ -199,7 +199,7 @@ test("no spacing corrections or observers remain in the card runtime", () => {
   }
 });
 
-test("adds 12px clearance only to the first visible conditional entity", () => {
+test("adds 6px clearance only to the first visible conditional entity", () => {
   const start = source.indexOf("const firstConditionalRowStyle =");
   const end = source.indexOf("const combinedStyleText =", start);
   const rule = source.slice(start, end);
@@ -209,7 +209,7 @@ test("adds 12px clearance only to the first visible conditional entity", () => {
   assert.ok(rule.includes(':not([style*="display: none"])'));
   assert.ok(rule.includes(":not(:has(> hui-conditional-row[hidden]))"));
   assert.ok(rule.includes(":has(> hui-conditional-row:not([hidden]))"));
-  assert.ok(rule.includes("padding-block-start: 12px"));
+  assert.ok(rule.includes("padding-block-start: 6px"));
   assert.ok(!rule.includes("margin-top"));
   assert.ok(source.includes("style.textContent = combinedStyleText;"));
   assert.ok(!source.includes("states.style.marginTop"));
