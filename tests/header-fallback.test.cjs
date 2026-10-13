@@ -125,7 +125,7 @@ test("template header preserves native vertical position and padding", () => {
   assert.ok(!style.includes("padding-right: 48px"));
   assert.ok(!style.includes("align-items: center !important"));
   assert.ok(style.includes("text-align: center !important"));
-  assert.ok(source.includes('const ENTITIES_HEADER_TEMPLATE_VERSION = "1.14";'));
+  assert.ok(source.includes('const ENTITIES_HEADER_TEMPLATE_VERSION = "1.15";'));
 });
 
 test("native first-row spacing is never modified during configuration or refresh", () => {
@@ -225,4 +225,132 @@ test("conditional spacing uses CSS without observers or animation polling", () =
   ]) {
     assert.equal(source.includes(obsolete), false, obsolete);
   }
+});
+
+function conditionalFirstRowFixture(iconTop = 114, textTop = 82, textHeight = 24) {
+  const icon = {
+    style: { translate: "" },
+    getClientRects: () => [{}],
+    getBoundingClientRect() {
+      const parts = this.style.translate.split(" ");
+      const offset = parts.length > 1 ? parseFloat(parts[1]) || 0 : 0;
+      return { top: iconTop + offset, height: 40 };
+    }
+  };
+  const info = {
+    getClientRects: () => [{}],
+    childNodes: [{
+      nodeType: 3,
+      textContent: "Pill Vibration Sensor",
+      rect: () => ({ top: textTop, height: textHeight })
+    }]
+  };
+  const root = {
+    querySelector(selector) {
+      if (selector === "#wrapper > .icon") return icon;
+      if (selector === "#wrapper > .info") return info;
+      return null;
+    }
+  };
+  const template = { shadowRoot: root };
+  const conditional = {
+    hidden: false,
+    querySelector(selector) {
+      return selector === "template-entity-row" ? template : null;
+    }
+  };
+  const row = {
+    hidden: false,
+    querySelector(selector) {
+      return selector === "hui-conditional-row" ? conditional : null;
+    }
+  };
+  const states = {
+    children: [row],
+    style: { marginTop: "" }
+  };
+  const card = new Header();
+  card.isConnected = true;
+  card._card = {
+    shadowRoot: {
+      querySelector(selector) {
+        return selector === "#states" ? states : null;
+      }
+    }
+  };
+  return { card, icon, info, states, row, conditional, template };
+}
+
+test("first conditional icon aligns with the primary text line only", () => {
+  const { card, icon, info, states } = conditionalFirstRowFixture();
+  const before = icon.getBoundingClientRect().top;
+  assert.equal(card._alignFirstConditionalIcon(), false);
+  const rect = icon.getBoundingClientRect();
+  assert.ok(rect.top < before);
+  assert.equal(rect.top + rect.height / 2, 82 + 24 / 2);
+  assert.equal(info.childNodes[0].rect().top, 82);
+  assert.equal(states.style.marginTop, "");
+  card._clearFirstIconAlignment();
+  assert.equal(icon.style.translate, "");
+  assert.equal(card._firstIconShift, 0);
+});
+
+test("conditional icon alignment updates when the first row changes", () => {
+  const first = conditionalFirstRowFixture(118, 82);
+  first.card._alignFirstConditionalIcon();
+  assert.notEqual(first.icon.style.translate, "");
+  const ordinaryRow = { hidden: false, querySelector: () => null };
+  first.states.children.unshift(ordinaryRow);
+  first.card._alignFirstConditionalIcon();
+  assert.equal(first.icon.style.translate, "");
+  assert.equal(first.states.style.marginTop, "");
+  first.states.children.shift();
+  first.conditional.hidden = true;
+  first.card._alignFirstConditionalIcon();
+  assert.equal(first.icon.style.translate, "");
+  first.conditional.hidden = false;
+  first.card._alignFirstConditionalIcon();
+  assert.notEqual(first.icon.style.translate, "");
+  first.card._clearFirstIconAlignment();
+});
+
+test("conditional rows rendering late get bounded retries and no leftover frame", () => {
+  runFrames();
+  const fixture = conditionalFirstRowFixture(112, 86);
+  fixture.template.shadowRoot = null;
+  fixture.card._scheduleFirstIconAlignment();
+  runFrames(4);
+  assert.equal(fixture.icon.style.translate, "");
+  fixture.template.shadowRoot = {
+    querySelector(selector) {
+      if (selector === "#wrapper > .icon") return fixture.icon;
+      if (selector === "#wrapper > .info") return fixture.info;
+      return null;
+    }
+  };
+  runFrames(10);
+  assert.notEqual(fixture.icon.style.translate, "");
+  assert.equal(fixture.card._firstIconFrame, null);
+  fixture.card.disconnectedCallback = () => fixture.card._clearFirstIconAlignment();
+  fixture.card.disconnectedCallback();
+  assert.equal(fixture.icon.style.translate, "");
+  assert.equal(frames.size, 0);
+});
+
+test("ordinary rows remain untouched by conditional icon alignment", () => {
+  const { card, icon, states } = conditionalFirstRowFixture();
+  states.children = [{ hidden: false, querySelector: () => null }];
+  card._alignFirstConditionalIcon();
+  assert.equal(icon.style.translate, "");
+  assert.equal(states.style.marginTop, "");
+  assert.equal(card._shiftedFirstIcon, null);
+});
+
+test("conditional icon alignment does not override native card header padding", () => {
+  assert.ok(source.includes("padding-block-start: 6px"));
+  assert.ok(!source.includes("states.style.marginTop"));
+  assert.ok(!source.includes("_spacingOffset"));
+  assert.ok(!source.includes("MutationObserver"));
+  assert.ok(!source.includes("ResizeObserver"));
+  assert.ok(source.includes('removeEventListener("row-visibility-changed"'));
 });
