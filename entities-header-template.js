@@ -461,7 +461,7 @@ class EntitiesHeaderTemplate extends HTMLElement {
     const oldShift = this._firstIconShift || 0;
     const delta = textRect.top + textRect.height / 2 -
       (iconRect.top + iconRect.height / 2);
-    const next = Math.max(-36, Math.min(36, oldShift + delta));
+    const next = Math.max(-64, Math.min(64, oldShift + delta));
     if (Math.abs(next - oldShift) >= 0.5) {
       this._firstIconShift = next;
       icon.style.translate = `0 ${next}px`;
