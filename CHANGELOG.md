@@ -1,5 +1,12 @@
 # Changelog
 
+## V1.15
+
+- Align the icon of the first visible conditional template row with its primary text line, even when that row has secondary information.
+- Keep the header-to-name gap, entity row positions, and native spacing unchanged. No additional top padding is introduced.
+- Recalculate when a conditional row becomes visible or Home Assistant updates; cleanly restore any icon translation when a different row becomes first or the card disconnects.
+- Add bounded asynchronous rendering retries and regression tests covering icon alignment, condition changes and cleanup.
+
 ## V1.14
 
 - Reduce the additional top padding for the first visible conditional entity row from 12px to 6px.
