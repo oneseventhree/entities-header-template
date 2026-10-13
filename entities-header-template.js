@@ -43,7 +43,12 @@ class EntitiesHeaderTemplate extends HTMLElement {
     this._firstIconAttempts = 0;
     this._shiftedFirstIcon = null;
     this._originalFirstIconTranslate = "";
+    this._firstIconShift = 0;
     this._firstConditionalVisibilityHandler = () => this._scheduleFirstIconAlignment(true);
+  }
+  connectedCallback() {
+    this._card?.addEventListener("row-visibility-changed", this._firstConditionalVisibilityHandler);
+    this._scheduleFirstIconAlignment();
   }
   disconnectedCallback() {
     this._unsubscribeTemplate();
@@ -400,6 +405,7 @@ class EntitiesHeaderTemplate extends HTMLElement {
       this._shiftedFirstIcon = null;
       this._originalFirstIconTranslate = "";
     }
+    this._firstIconShift = 0;
     this._firstIconAttempts = 0;
   }
   _scheduleFirstIconAlignment(retry = false) {
