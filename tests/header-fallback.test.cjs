@@ -337,6 +337,20 @@ test("conditional rows rendering late get bounded retries and no leftover frame"
   assert.equal(frames.size, 0);
 });
 
+test("conditional row not yet mounted is retried before giving up", () => {
+  runFrames();
+  const fixture = conditionalFirstRowFixture(116, 84);
+  fixture.conditional.querySelector = () => null;
+  fixture.card._scheduleFirstIconAlignment();
+  runFrames(3);
+  assert.equal(fixture.icon.style.translate, "");
+  fixture.conditional.querySelector = (selector) =>
+    selector === "template-entity-row" ? fixture.template : null;
+  runFrames(5);
+  assert.notEqual(fixture.icon.style.translate, "");
+  fixture.card._clearFirstIconAlignment();
+});
+
 test("ordinary rows remain untouched by conditional icon alignment", () => {
   const { card, icon, states } = conditionalFirstRowFixture();
   states.children = [{ hidden: false, querySelector: () => null }];
