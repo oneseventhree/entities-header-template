@@ -1,5 +1,11 @@
 # Changelog
 
+## V1.14
+
+- Reduce the additional top padding for the first visible conditional entity row from 12px to 6px.
+- Keep Home Assistant's native layout for ordinary entity rows and leave their spacing unchanged.
+- Preserve header styling and actions without reintroducing global row-spacing adjustments.
+
 ## V1.13
 
 - Add 12px of extra clearance beneath the header only when a conditional row is the first visible entity.
