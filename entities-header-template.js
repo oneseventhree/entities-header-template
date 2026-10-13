@@ -430,15 +430,17 @@ class EntitiesHeaderTemplate extends HTMLElement {
       return !conditional || (!conditional.hidden &&
         getComputedStyle(conditional).display !== "none");
     });
-    const conditional = first?.querySelector("hui-conditional-row");
+    if (!first) return true;
+    const conditional = first.querySelector("hui-conditional-row");
     const template = conditional?.querySelector("template-entity-row");
-    const root = template?.shadowRoot;
-    const icon = root?.querySelector("#wrapper > .icon");
-    const info = root?.querySelector("#wrapper > .info");
-    if (!conditional || !template) {
+    if (!conditional) {
       this._clearFirstIconAlignment();
       return false;
     }
+    if (!template) return true;
+    const root = template.shadowRoot;
+    const icon = root?.querySelector("#wrapper > .icon");
+    const info = root?.querySelector("#wrapper > .info");
     if (!icon || !info || !icon.getClientRects().length || !info.getClientRects().length) {
       return true;
     }
