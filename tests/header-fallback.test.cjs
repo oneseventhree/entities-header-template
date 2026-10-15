@@ -125,7 +125,7 @@ test("template header preserves native vertical position and padding", () => {
   assert.ok(!style.includes("padding-right: 48px"));
   assert.ok(!style.includes("align-items: center !important"));
   assert.ok(style.includes("text-align: center !important"));
-  assert.ok(source.includes('const ENTITIES_HEADER_TEMPLATE_VERSION = "1.15";'));
+  assert.ok(source.includes('const ENTITIES_HEADER_TEMPLATE_VERSION = "1.16";'));
 });
 
 test("native first-row spacing is never modified during configuration or refresh", () => {
@@ -199,19 +199,11 @@ test("no spacing corrections or observers remain in the card runtime", () => {
   }
 });
 
-test("adds 6px clearance only to the first visible conditional entity", () => {
-  const start = source.indexOf("const firstConditionalRowStyle =");
-  const end = source.indexOf("const combinedStyleText =", start);
-  const rule = source.slice(start, end);
-  assert.ok(start > 0 && end > start);
-  assert.ok(rule.includes("#states > div:nth-child("));
-  assert.ok(rule.includes("1 of :not([hidden])"));
-  assert.ok(rule.includes(':not([style*="display: none"])'));
-  assert.ok(rule.includes(":not(:has(> hui-conditional-row[hidden]))"));
-  assert.ok(rule.includes(":has(> hui-conditional-row:not([hidden]))"));
-  assert.ok(rule.includes("padding-block-start: 6px"));
-  assert.ok(!rule.includes("margin-top"));
-  assert.ok(source.includes("style.textContent = combinedStyleText;"));
+test("first visible conditional entity has native header-to-row spacing", () => {
+  assert.ok(!source.includes("firstConditionalRowStyle"));
+  assert.ok(!source.includes("padding-block-start: 6px"));
+  assert.ok(!source.includes("combinedStyleText"));
+  assert.ok(source.includes("style.textContent = styleText;"));
   assert.ok(!source.includes("states.style.marginTop"));
 });
 
@@ -361,7 +353,7 @@ test("ordinary rows remain untouched by conditional icon alignment", () => {
 });
 
 test("conditional icon alignment does not override native card header padding", () => {
-  assert.ok(source.includes("padding-block-start: 6px"));
+  assert.ok(!source.includes("padding-block-start: 6px"));
   assert.ok(!source.includes("states.style.marginTop"));
   assert.ok(!source.includes("_spacingOffset"));
   assert.ok(!source.includes("MutationObserver"));
