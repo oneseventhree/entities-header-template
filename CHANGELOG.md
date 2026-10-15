@@ -1,5 +1,11 @@
 # Changelog
 
+## V1.16
+
+- Remove the 6px extra padding on first visible conditional rows, returning Bedroom's header-to-first-name gap to Home Assistant's native spacing.
+- Preserve the first conditional row icon alignment introduced in V1.15, including secondary-text rows and changing visibility.
+- Leave ordinary first rows, later rows, template headings, actions and card_mod styling unchanged.
+
 ## V1.15
 
 - Align the icon of the first visible conditional template row with its primary text line, even when that row has secondary information.
